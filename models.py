@@ -4,10 +4,12 @@ from datetime import date
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True)     
+@dataclass(unsafe_hash=True)     
 class OrderLine:
     """
     Модель данных для хранения данных заказа без какого-либо поведения и изменения
+    unsafe_hash = True: Явное определение метода __hash()__, когда класс логически неизменяем,
+    но, тем не менее может быть изменен
     """
     orderid: str
     sku: str
