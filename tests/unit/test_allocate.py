@@ -1,5 +1,5 @@
 from datetime import date, timedelta
-from models import OrderLine, Batch, allocate, OutOfStock
+from domain.models import OrderLine, Batch, allocate, OutOfStock
 import pytest
 
 
@@ -44,7 +44,7 @@ def test_returns_allocated_batch_ref():
     """
     in_stock_batch = Batch("in-stock-batch-ref", "HIGHBROW-POSTER", 100, eta=None)
     shipment_batch = Batch("shipment-batch-ref", "HIGHBROW-POSTER", 100, eta=tomorrow)
-    line = OrderLine("oref", "HIGHVROW-POSTER", 10)
+    line = OrderLine("oref", "HIGHBROW-POSTER", 10)
 
     allocation = allocate(line, [in_stock_batch, shipment_batch])
 

@@ -73,7 +73,7 @@ class Batch:
         return self._purchased_quantity - self.allocated_quantity
 
     def can_allocate(self, line: OrderLine) -> bool:
-        return self.sku == line.sku and self.available_quantity
+        return self.sku == line.sku and self.available_quantity >= line.qty
 
 
 class OutOfStock(Exception):    # Исключение могут выражать понятия из предметной области
