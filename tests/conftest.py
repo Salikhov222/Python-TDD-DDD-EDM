@@ -3,7 +3,7 @@ import config
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, clear_mappers
 from sqlalchemy.sql import text
-from orm import metadata, start_mappers
+from adapters.orm import metadata, start_mappers
 
 
 # Создание движка БД и таблиц
@@ -23,7 +23,7 @@ def sqlite_session(in_memory_db):
 
 
 # Создание БД postgres
-@pytest.fixture
+@pytest.fixture(scope='session')
 def postgres_db():
     engine = create_engine(config.get_postgres_uri())
     metadata.create_all(engine)

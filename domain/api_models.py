@@ -9,3 +9,7 @@ class OrderLine(BaseModel):
 
 class APIAllocateModel(OrderLine):
     pass
+
+
+class APIDeallocateModel(OrderLine):
+    pass

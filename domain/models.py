@@ -61,7 +61,7 @@ class Batch:
             self._allocations.add(line)
 
     def deallocate(self, line: OrderLine) -> None:
-        if line in self._allocations:
+        if self.can_deallocate(line):
             self._allocations.remove(line)
 
     @property   # позволяет сделать метод вычисляемым свойством
@@ -75,6 +75,8 @@ class Batch:
     def can_allocate(self, line: OrderLine) -> bool:
         return self.sku == line.sku and self.available_quantity >= line.qty
 
+    def can_deallocate(self, line: OrderLine) -> bool:
+        return line in self._allocations
 
 class OutOfStock(Exception):    # Исключение могут выражать понятия из предметной области
     """
@@ -83,9 +85,16 @@ class OutOfStock(Exception):    # Исключение могут выражат
     pass
 
 
+class NoOrderInBatch(Exception):
+    """
+    Исключение, в случае отсутствия товарной позиции в партии
+    """
+    pass
+
+
 def allocate(line: OrderLine, batches: List[Batch]) -> str:
     """
-    Автономная функция для службы предментой области, а именно
+    Автономная функция для службы предметной области, а именно
     для службы размещения товарных позиций в конкретном наборе партий
     """
     try:
@@ -94,4 +103,16 @@ def allocate(line: OrderLine, batches: List[Batch]) -> str:
         return batch.reference
     except StopIteration:
         raise OutOfStock(f'Артикула {line.sku} нет в наличии')
+
+
+def deallocate(line: OrderLine, batches: List[Batch]) -> str:
+    """
+    Служба предметной области для отмены размещения товарной позиции в конкретной партии
+    """
+    try:
+        batch = next(b for b in sorted(batches) if b.can_deallocate(line))
+        batch.deallocate(line)
+        return batch.reference
+    except StopIteration:
+        raise NoOrderInBatch(f'Товарная позиция {line.sku} не размещена ни в одной партии')
 

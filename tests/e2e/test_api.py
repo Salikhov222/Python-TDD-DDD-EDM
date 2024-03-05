@@ -57,3 +57,39 @@ def test_unhappy_path_returns_400_and_error_message():
     assert r.json()['detail'] == f'Недопустимый артикул {unknown_sku}'
 
 
+def test_deallocate(add_stock):
+    """
+    Сквозной тест для проверки работы конечной точки отмены размещения заказа:
+    1) Сперва размещаем заказ в первой партии
+    2) Проверям, что размещение второго заказа в той же партии невозможно, так как товара нет в наличии
+    3) Отменяем первый заказ
+    4) Размещаем второй заказ в той же партии
+    """
+    sku, order1, order2 = random_sku(), random_orderid(), random_orderid()
+    batch = random_batchref()
+    add_stock([(batch, sku, 100, '2011-01-02')])
+    url = config.get_api_url()
+    # fully allocate
+    r = requests.post(
+        f'{url}/allocate', json={'orderid': order1, 'sku': sku, 'qty': 100}
+    )
+    assert r.json()['batchref'] == batch
+
+    # cannot allocate second order
+    r = requests.post(
+        f'{url}/allocate', json={'orderid': order2, 'sku': sku, 'qty': 100}
+    )
+    assert r.json()['status_code'] == 404
+
+    # deallocate
+    r = requests.post(
+        f'{url}/deallocate', json={'orderid': order1, 'sku':sku, 'qty': 100}
+    )
+    assert r.ok
+    
+    # allocate second order
+    r = requests.post(
+        f'{url}/allocate', json={'orderid': order2, 'sku': sku, 'qty': 100}
+    )
+    assert r.ok
+    assert r.json()['batchref'] == batch

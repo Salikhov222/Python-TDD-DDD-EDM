@@ -2,7 +2,7 @@
 
 import adapters.repository
 import pytest
-from domain.models import OrderLine, Batch
+from domain.models import OrderLine, Batch, NoOrderInBatch
 import service_layer.services
 
 
@@ -57,3 +57,38 @@ def test_commits():
 
     service_layer.services.allocate(line, repo, session)
     assert session.commited is True
+
+def test_deallocate_decrements_available_quantity():
+    """
+    Тест для проверки отмены размещения позиции в партии
+    """
+    repo, session = FakeRepository([]), FakeSession()
+    service_layer.services.add_batch("b1", 'BLUE-PLINTH', 100, None, repo, session)
+    line = OrderLine('o1', 'BLUE-PLINTH', 10)
+    service_layer.services.allocate(line, repo, session)
+    batch = repo.get(reference='b1')
+    assert batch.available_quantity == 90
+    service_layer.services.deallocate(line, repo, session)
+    assert batch.available_quantity == 100
+
+
+def test_deallocate_decrements_correct_quantity():
+    ...  #  TODO - check that we decrement the right sku
+    repo, session = FakeRepository([]), FakeSession()
+    service_layer.services.add_batch("b1", 'WHITE-TABLE', 100, None, repo, session)
+    line = OrderLine('o1', 'WHITE-TABLE', 10)
+    ref_batch = service_layer.services.allocate(line, repo, session)
+    batch = repo.get(reference='b1')
+    assert ref_batch == batch.reference
+    service_layer.services.deallocate(line, repo, session)
+    assert batch.available_quantity == 100
+
+
+def test_trying_to_deallocate_unallocated_batch():
+    ...  #  TODO: should this error or pass silently? up to you.
+    repo, session = FakeRepository([]), FakeSession()
+    service_layer.services.add_batch("b1", 'RED-CHAIR', 100, None, repo, session)
+    batch = repo.get(reference='b1')    
+    line = OrderLine('o1', 'RED-CHAIR', 10)
+    with pytest.raises(NoOrderInBatch, match=f'Товарная позиция {line.sku} не размещена ни в одной партии'):
+        service_layer.services.deallocate(line, repo, session)

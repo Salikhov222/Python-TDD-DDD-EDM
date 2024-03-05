@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, status
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from domain.api_models import APIAllocateModel
+from domain.api_models import APIAllocateModel, APIDeallocateModel
 
 import config
 import domain.models
@@ -26,7 +26,7 @@ async def allocate_endpoint(body: APIAllocateModel):
         body.qty,
     )
     try:
-        batchref = service_layer.services.allocate(line, repo, session)       # передача данных в службу предментной области
+        batchref = service_layer.services.allocate(line, repo, session)       # передача данных в службу предметной области
     except (domain.models.OutOfStock, service_layer.services.InvalidSku) as e:
         return HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -36,3 +36,27 @@ async def allocate_endpoint(body: APIAllocateModel):
         'batchref': batchref
     }
 
+
+@app.post("/deallocate")
+async def deallocate_endpoint(body: APIDeallocateModel):
+    """
+    Конечная точка для отмены размещения позиции в партии
+    """
+    session = get_session()
+    repo = adapters.repository.SqlAlchemyRepository(session)
+    line = domain.models.OrderLine(
+        body.orderid,
+        body.sku,
+        body.qty,
+    )
+    try:
+        batchref = service_layer.services.deallocate(line, repo, session)
+    except (domain.models.NoOrderInBatch, service_layer.services.InvalidSku) as e:
+        return HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    
+    return {
+        'batchref': batchref
+    }

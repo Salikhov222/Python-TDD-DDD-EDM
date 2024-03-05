@@ -31,7 +31,7 @@ allocations = Table(
 )
 
 def start_mappers():
-    lines_mapper = mapper_reg.map_imperatively(domain.models.OrderLine, order_lines)   # Привяззка класса модели к таблице
+    lines_mapper = mapper_reg.map_imperatively(domain.models.OrderLine, order_lines)   # Привязка класса модели к таблице
     batches_mapper = mapper_reg.map_imperatively(
         domain.models.Batch,
         batches,
