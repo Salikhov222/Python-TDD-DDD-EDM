@@ -1,13 +1,10 @@
 from typing import Optional
 
 from datetime import date
-import domain.models
-from domain.models import OrderLine, Batch
-from adapters.repository import AbstractRepositoriy
-
-
-class InvalidSku(Exception):
-    pass
+from src.allocation import domain
+from src.allocation.domain.models import OrderLine, Batch
+from src.allocation.adapters.repository import AbstractRepositoriy
+from src.allocation.domain.exceptions import InvalidSku
 
 
 def is_valid_sku(sku, batches):

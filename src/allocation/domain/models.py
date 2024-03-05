@@ -2,6 +2,7 @@ from typing import Optional, List
 
 from datetime import date
 from dataclasses import dataclass
+from src.allocation.domain.exceptions import OutOfStock, NoOrderInBatch
 
 
 @dataclass(unsafe_hash=True)     
@@ -77,19 +78,6 @@ class Batch:
 
     def can_deallocate(self, line: OrderLine) -> bool:
         return line in self._allocations
-
-class OutOfStock(Exception):    # Исключение могут выражать понятия из предметной области
-    """
-    Исключение в случае отсутствия товара в наличии
-    """
-    pass
-
-
-class NoOrderInBatch(Exception):
-    """
-    Исключение, в случае отсутствия товарной позиции в партии
-    """
-    pass
 
 
 def allocate(line: OrderLine, batches: List[Batch]) -> str:

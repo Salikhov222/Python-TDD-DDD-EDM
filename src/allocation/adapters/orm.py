@@ -1,6 +1,6 @@
 from sqlalchemy.orm import registry, relationship
 from sqlalchemy import MetaData, Table, Column, Integer, String, Date, ForeignKey
-import domain.models
+from src.allocation.domain import models
 
 metadata = MetaData()
 mapper_reg = registry()     # Замена mapper в версии SQLALchemy 2.0
@@ -31,9 +31,9 @@ allocations = Table(
 )
 
 def start_mappers():
-    lines_mapper = mapper_reg.map_imperatively(domain.models.OrderLine, order_lines)   # Привязка класса модели к таблице
+    lines_mapper = mapper_reg.map_imperatively(models.OrderLine, order_lines)   # Привязка класса модели к таблице
     batches_mapper = mapper_reg.map_imperatively(
-        domain.models.Batch,
+        models.Batch,
         batches,
         properties={
             "_allocations": relationship(

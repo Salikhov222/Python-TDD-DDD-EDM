@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-import domain.models
+from src.allocation.domain import models
 
 
 class AbstractRepositoriy(ABC):
@@ -10,11 +10,11 @@ class AbstractRepositoriy(ABC):
     """
 
     @abstractmethod
-    def add(self, batch: domain.models.Batch):
+    def add(self, batch: models.Batch):
         raise NotImplementedError
     
     @abstractmethod
-    def get(self, reference) -> domain.models.Batch:
+    def get(self, reference) -> models.Batch:
         raise NotImplementedError
     
 
@@ -30,7 +30,7 @@ class SqlAlchemyRepository(AbstractRepositoriy):
         self.session.add(batch)
 
     def get(self, reference):
-        return self.session.query(domain.models.Batch).filter_by(reference=reference).one()
+        return self.session.query(models.Batch).filter_by(reference=reference).one()
 
     def list(self):
-        return self.session.query(domain.models.Batch).all()
+        return self.session.query(models.Batch).all()

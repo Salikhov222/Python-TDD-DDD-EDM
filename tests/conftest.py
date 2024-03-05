@@ -1,9 +1,10 @@
 import pytest
-import config
+from src.allocation import config
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, clear_mappers
 from sqlalchemy.sql import text
-from adapters.orm import metadata, start_mappers
+from src.allocation.adapters.orm import metadata, start_mappers
 
 
 # Создание движка БД и таблиц

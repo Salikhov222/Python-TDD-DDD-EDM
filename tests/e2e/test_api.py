@@ -1,7 +1,7 @@
 # Сквозные тесты Е2Е для всего, что связано с вебом
 
 import pytest
-import config
+from src.allocation import config
 import requests
 import uuid
 
