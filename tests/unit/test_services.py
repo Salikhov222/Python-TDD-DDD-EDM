@@ -1,12 +1,12 @@
 # Тесты, касающиеся оркестровки
 
-import adapters.repository
+from src.allocation.adapters import repository
 import pytest
-from domain.models import OrderLine, Batch, NoOrderInBatch
-import service_layer.services
+from src.allocation.domain.models import OrderLine, Batch, NoOrderInBatch
+from src.allocation.service_layer import services
 
 
-class FakeRepository(adapters.repository.AbstractRepositoriy):
+class FakeRepository(repository.AbstractRepositoriy):
     """
     Фейковый репозиторий для тестирования приложения
     """
@@ -34,28 +34,24 @@ class FakeSession():
 
 
 def test_returns_allocation():
-    line = OrderLine('o1', 'COMPLICATED-LAMP', 10)
-    batch = Batch('b1', 'COMPLICATED-LAMP', 100, eta=None)
-    repo = FakeRepository([batch])
+    repo, session = FakeRepository([]), FakeSession()
+    services.add_batch('b1', 'COMPLICATED-LAMP', 100, None, repo, session)
 
-    result = service_layer.services.allocate(line, repo, FakeSession())
+    result = services.allocate('o1', 'COMPLICATED-LAMP', 10, repo, FakeSession())
     assert result == 'b1'
 
 def test_error_for_invalid_sku():
-    line = OrderLine('o1', 'NONE', 10)
-    batch = Batch('b1', 'EXIST', 100, eta=None)
-    repo = FakeRepository([batch])
+    repo, session = FakeRepository([]), FakeSession()
+    services.add_batch('b1', 'EXIST', 100, None, repo, session)
 
-    with pytest.raises(service_layer.services.InvalidSku, match=f'Недопустимый артикул {line.sku}'):
-        service_layer.services.allocate(line, repo, FakeSession())
+    with pytest.raises(services.InvalidSku, match=f'Недопустимый артикул NONE'):
+        services.allocate('o1', 'NONE', 10, repo, session)
 
 def test_commits():
-    line = OrderLine('o1', 'COMPLICATED-LAMP', 10)
-    batch = Batch('b1', 'COMPLICATED-LAMP', 100, eta=None)
-    repo = FakeRepository([batch])
-    session = FakeSession()
+    repo, session = FakeRepository([]), FakeSession()
+    services.add_batch('b1', 'COMPLICATED-LAMP', 100, None, repo, session)
 
-    service_layer.services.allocate(line, repo, session)
+    services.allocate('o1', 'COMPLICATED-LAMP', 10, repo, session)
     assert session.commited is True
 
 def test_deallocate_decrements_available_quantity():
@@ -63,32 +59,29 @@ def test_deallocate_decrements_available_quantity():
     Тест для проверки отмены размещения позиции в партии
     """
     repo, session = FakeRepository([]), FakeSession()
-    service_layer.services.add_batch("b1", 'BLUE-PLINTH', 100, None, repo, session)
-    line = OrderLine('o1', 'BLUE-PLINTH', 10)
-    service_layer.services.allocate(line, repo, session)
+    services.add_batch("b1", 'BLUE-PLINTH', 100, None, repo, session)
+    services.allocate('o1', 'BLUE-PLINTH', 10, repo, session)
     batch = repo.get(reference='b1')
     assert batch.available_quantity == 90
-    service_layer.services.deallocate(line, repo, session)
+    services.deallocate('o1', 'BLUE-PLINTH', 10, repo, session)
     assert batch.available_quantity == 100
 
 
 def test_deallocate_decrements_correct_quantity():
     ...  #  TODO - check that we decrement the right sku
     repo, session = FakeRepository([]), FakeSession()
-    service_layer.services.add_batch("b1", 'WHITE-TABLE', 100, None, repo, session)
-    line = OrderLine('o1', 'WHITE-TABLE', 10)
-    ref_batch = service_layer.services.allocate(line, repo, session)
+    services.add_batch("b1", 'WHITE-TABLE', 100, None, repo, session)
+    ref_batch = services.allocate('o1', 'WHITE-TABLE', 10, repo, session)
     batch = repo.get(reference='b1')
     assert ref_batch == batch.reference
-    service_layer.services.deallocate(line, repo, session)
+    services.deallocate('o1', 'WHITE-TABLE', 10, repo, session)
     assert batch.available_quantity == 100
 
 
 def test_trying_to_deallocate_unallocated_batch():
     ...  #  TODO: should this error or pass silently? up to you.
     repo, session = FakeRepository([]), FakeSession()
-    service_layer.services.add_batch("b1", 'RED-CHAIR', 100, None, repo, session)
+    services.add_batch("b1", 'RED-CHAIR', 100, None, repo, session)
     batch = repo.get(reference='b1')    
-    line = OrderLine('o1', 'RED-CHAIR', 10)
-    with pytest.raises(NoOrderInBatch, match=f'Товарная позиция {line.sku} не размещена ни в одной партии'):
-        service_layer.services.deallocate(line, repo, session)
+    with pytest.raises(NoOrderInBatch, match=f'Товарная позиция RED-CHAIR не размещена ни в одной партии'):
+        services.deallocate('o1', 'RED-CHAIR', 10, repo, session)

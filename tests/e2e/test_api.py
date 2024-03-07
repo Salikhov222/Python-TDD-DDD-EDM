@@ -22,7 +22,17 @@ def random_orderid(name=""):
     return f"order-{name}-{random_suffix()}"
 
 
-def test_happy_path_returns_200_and_allocated_batch(add_stock):
+def post_to_add_batch(ref, sku, qty, eta):
+    url = config.get_api_url()
+    r = requests.post(
+        f'{url}/batches',
+        json={'ref': ref, 'sku': sku, 'qty': qty, 'eta': eta}
+    )
+    
+    assert r.status_code == 200
+
+
+def test_happy_path_returns_200_and_allocated_batch():
     """
     Первый сквозной тест для проверки использования конечной точки API 
     и связывания с реальной БД
@@ -34,12 +44,10 @@ def test_happy_path_returns_200_and_allocated_batch(add_stock):
     laterbatch = random_batchref(2)
     otherbatch = random_batchref(3)
 
-    # add_stock() вспомогательный инструмент, которая просто скрывает детали ручной вставки строк в БД с помощью SQL
-    add_stock([
-        (laterbatch, sku, 100, '2011-01-02'),
-        (earlybatch, sku, 100, '2011-01-01'),
-        (otherbatch, othersku, 100, None),
-    ])
+    post_to_add_batch(laterbatch, sku, 100, '2011-01-02')
+    post_to_add_batch(earlybatch, sku, 100, '2011-01-01')
+    post_to_add_batch(otherbatch, othersku, 100, None)
+
     data = {'orderid': random_orderid(), 'sku': sku, 'qty': 3}
     url = config.get_api_url()
     r = requests.post(f'{url}/allocate', json=data)
@@ -57,7 +65,7 @@ def test_unhappy_path_returns_400_and_error_message():
     assert r.json()['detail'] == f'Недопустимый артикул {unknown_sku}'
 
 
-def test_deallocate(add_stock):
+def test_deallocate():
     """
     Сквозной тест для проверки работы конечной точки отмены размещения заказа:
     1) Сперва размещаем заказ в первой партии
@@ -67,7 +75,7 @@ def test_deallocate(add_stock):
     """
     sku, order1, order2 = random_sku(), random_orderid(), random_orderid()
     batch = random_batchref()
-    add_stock([(batch, sku, 100, '2011-01-02')])
+    post_to_add_batch(batch, sku, 100, '2011-01-02')
     url = config.get_api_url()
     # fully allocate
     r = requests.post(

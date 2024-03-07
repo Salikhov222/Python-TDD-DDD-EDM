@@ -8,6 +8,7 @@ COPY requirements.txt .
 RUN pip install -r requirements.txt
 
 # Создание директории /src и копирование содержимого из локальной директории внутрь образа
+# Не работает, не видит директорию src, почему?
 # RUN mkdir -p /src
 # COPY src/ /src
 # RUN pip install -e /src
@@ -15,4 +16,4 @@ RUN pip install -r requirements.txt
 
 # ENV PYTHONPATH=/src
 
-CMD [ "uvicorn", "src.allocation.entrypoints.fastAPI_app:app", "--reload", "--host", "0.0.0.0", "--port", "80" ]
+CMD [ "uvicorn", "src.allocation.entrypoints.fastAPI_app:app", "--reload", "--host", "0.0.0.0", "--port", "8000" ]

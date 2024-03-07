@@ -1,5 +1,5 @@
-import domain.models
-import adapters.repository
+from src.allocation.domain import models
+from src.allocation.adapters import repository
 from sqlalchemy.sql import text
 
 
@@ -49,9 +49,9 @@ def test_repository_can_save_a_batch(sqlite_session):
     """
     Тест репозитория на сохранение объекта
     """
-    batch = domain.models.Batch("batch1", "RUSTY-SOAPDISH", 100, eta=None)
+    batch = models.Batch("batch1", "RUSTY-SOAPDISH", 100, eta=None)
     
-    repo = adapters.repository.SqlAlchemyRepository(sqlite_session)
+    repo = repository.SqlAlchemyRepository(sqlite_session)
     repo.add(batch)
     sqlite_session.commit()
 
@@ -74,16 +74,16 @@ def test_repository_can_retrieve_a_batch_with_allocations(sqlite_session):
     insert_batch(sqlite_session, 'batch2')
     insert_allocation(sqlite_session, orderline_id, batch1_id)
 
-    repo = adapters.repository.SqlAlchemyRepository(sqlite_session)
+    repo = repository.SqlAlchemyRepository(sqlite_session)
     retrieved = repo.get('batch1')
 
-    expected = domain.models.Batch('batch1', 'GENERIC-SOFA', 100, eta=None)
+    expected = models.Batch('batch1', 'GENERIC-SOFA', 100, eta=None)
     assert retrieved == expected    # Batch.__eq__ сравнивает только ссылку
     
     assert retrieved.sku == expected.sku
     assert retrieved._purchased_quantity == expected._purchased_quantity
     assert retrieved._allocations == {
-        domain.models.OrderLine('order1', 'GENERIC-SOFA', 12)
+        models.OrderLine('order1', 'GENERIC-SOFA', 12)
     }
 
 
@@ -91,12 +91,12 @@ def test_updating_a_batch(sqlite_session):
     """
     Тест репозитория на обновление партии товара при повтороном размещении заказа
     """
-    order1 = domain.models.OrderLine("order1", 'TABLE', 10)
-    order2 = domain.models.OrderLine("order2", 'TABLE', 20)
-    batch = domain.models.Batch('batch1', 'TABLE', 100, eta=None)    
+    order1 = models.OrderLine("order1", 'TABLE', 10)
+    order2 = models.OrderLine("order2", 'TABLE', 20)
+    batch = models.Batch('batch1', 'TABLE', 100, eta=None)    
     batch.allocate(order1)
 
-    repo = adapters.repository.SqlAlchemyRepository(sqlite_session)
+    repo = repository.SqlAlchemyRepository(sqlite_session)
     repo.add(batch)
     sqlite_session.commit()
 

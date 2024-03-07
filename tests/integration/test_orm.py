@@ -1,4 +1,4 @@
-import domain.models
+from src.allocation.domain import models
 from sqlalchemy.sql import text
 
 
@@ -10,16 +10,16 @@ def test_orderline_mapper_can_load_lines(sqlite_session):
         '("order3", "RED-LIPSTICK", 14)')
     )
     expected = [
-        domain.models.OrderLine("order1", "RED-CHAIR", 12),
-        domain.models.OrderLine("order2", "RED-TABLE", 13),
-        domain.models.OrderLine("order3", "RED-LIPSTICK", 14)
+        models.OrderLine("order1", "RED-CHAIR", 12),
+        models.OrderLine("order2", "RED-TABLE", 13),
+        models.OrderLine("order3", "RED-LIPSTICK", 14)
     ]
 
-    assert sqlite_session.query(domain.models.OrderLine).all() == expected
+    assert sqlite_session.query(models.OrderLine).all() == expected
 
 
 def test_orderline_mapper_can_save_lines(sqlite_session):
-    new_line = domain.models.OrderLine("order1", "DECORATIVE-WIDGET", 12)
+    new_line = models.OrderLine("order1", "DECORATIVE-WIDGET", 12)
     sqlite_session.add(new_line)
     sqlite_session.commit()
 
