@@ -6,8 +6,11 @@ from src.allocation import config
 from src.allocation.adapters import repository
 
 
+DEFAULT_SESSION_FACTORY = sessionmaker(bind=create_engine(config.get_postgres_uri()))
+
+
 class AbstractUnitOfWork(ABC):  # Абстрактный контекстный менеджер
-    # batches: repository.AbstractRepositoriy     # создание объекта репозитория для доступа партиям
+    batches: repository.AbstractRepositoriy     # создание объекта репозитория для доступа партиям
 
     def __exit__(self, *args):  # магический метод, который выполняется при входе в блок with
         self.rollback()
@@ -23,9 +26,6 @@ class AbstractUnitOfWork(ABC):  # Абстрактный контекстный 
     def rollback(self):
         raise NotImplementedError
     
-
-DEFAULT_SESSION_FACTORY = sessionmaker(bind=create_engine(config.get_postgres_uri()))
-
 
 class SqlAlchemyUnitOfWork(AbstractUnitOfWork):     # Реализация абстракции UoW
     

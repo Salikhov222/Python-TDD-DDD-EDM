@@ -55,7 +55,6 @@ async def add_batch(body: APIAddBatchModel):
     Конечная точка для добавления партии товара
     """
     uow = unit_of_work.SqlAlchemyUnitOfWork()
-    eta = body.eta
     try:
         services.add_batch(body.ref, body.sku, body.qty, body.eta, uow)
     except Exception as e:
