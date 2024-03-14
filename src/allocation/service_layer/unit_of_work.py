@@ -1,6 +1,9 @@
+from typing import ContextManager
+from contextlib import contextmanager
+
 from abc import ABC, abstractmethod
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
 
 from src.allocation import config
 from src.allocation.adapters import repository
@@ -8,43 +11,37 @@ from src.allocation.adapters import repository
 
 DEFAULT_SESSION_FACTORY = sessionmaker(bind=create_engine(config.get_postgres_uri()))
 
+# Декоратор contextmanager возвращает объект с автоматически созданными методами __enter__() и __exit__()
+@contextmanager
+def start_uow(session_factory=DEFAULT_SESSION_FACTORY):
+    session = session_factory()
 
-class AbstractUnitOfWork(ABC):  # Абстрактный контекстный менеджер
-    batches: repository.AbstractRepositoriy     # создание объекта репозитория для доступа партиям
+    try:
+        uow = SqlAlchemyUnitOfWork(session)
+        yield uow
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
 
-    def __exit__(self, *args):  # магический метод, который выполняется при входе в блок with
-        self.rollback()
-    
-    def __enter__(self):
-        pass
+class AbstractUnitOfWork(ABC):
 
-    @abstractmethod
+    abstractmethod
     def commit(self):
         raise NotImplementedError
-    
-    @abstractmethod
+
+    abstractmethod
     def rollback(self):
         raise NotImplementedError
+
+
+class SqlAlchemyUnitOfWork(AbstractUnitOfWork):
     
-
-class SqlAlchemyUnitOfWork(AbstractUnitOfWork):     # Реализация абстракции UoW
+    def __init__(self, session: Session) -> None:
+        self.session = session
+        self.batches = repository.SqlAlchemyRepository(session)
     
-    def __init__(self, session_factory=DEFAULT_SESSION_FACTORY) -> None:
-        self.session_factory = session_factory
-
-    def __enter__(self):
-        """
-        Запуск сеанс БД и создание экземпляра реального репозитория
-        """
-        self.session = self.session_factory() # тип: Session
-        self.batches = repository.SqlAlchemyRepository(self.session)
-        return super().__enter__()
-
-    # магический метод, который выполняется при выходе в блок with
-    def __exit__(self, *args) -> None:
-        super().__exit__(*args)
-        self.session.close()
-
     def commit(self) -> None:
         self.session.commit()
 

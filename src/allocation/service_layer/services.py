@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, ContextManager
 
 from datetime import date
 from src.allocation import domain
@@ -13,21 +13,21 @@ def is_valid_sku(sku, batches):
 
 
  
-def add_batch(ref: str, sku: str, qty: int, eta: Optional[date], uow: unit_of_work.AbstractUnitOfWork) -> None:
+def add_batch(ref: str, sku: str, qty: int, eta: Optional[date], start_uow: ContextManager[unit_of_work.AbstractUnitOfWork]) -> None:
     """
     Служба сервисного слоя для пополнения товарных запасов партии
     """
-    with uow:
-        uow.batches.add(Batch(ref, sku, qty, eta))    
-        uow.commit()
+    with start_uow as uow:
+        uow.batches.add(Batch(ref, sku, qty, eta))
+        uow.commit()    
 
 
-def allocate(orderid: str, sku: str, qty: int, uow: unit_of_work.AbstractUnitOfWork) -> str:
+def allocate(orderid: str, sku: str, qty: int, start_uow: ContextManager[unit_of_work.AbstractUnitOfWork]) -> str:
     """
     Служба сервисного слоя для размещения товарной позиции в партии
     """
     line = OrderLine(orderid, sku, qty)
-    with uow:
+    with start_uow as uow:
         batches = uow.batches.list()
         if not is_valid_sku(line.sku, batches):     # проверка на правильность введенных данных
             raise InvalidSku(f'Недопустимый артикул {line.sku}')
