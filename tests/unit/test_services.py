@@ -7,22 +7,20 @@ from src.allocation.domain.models import OrderLine, Batch, NoOrderInBatch
 from src.allocation.service_layer import services
 
 
-class FakeRepository(repository.AbstractRepositoriy):
+class FakeRepository(repository.AbstractProductRepositoriy):
     """
     Фейковый репозиторий для тестирования приложения
     """
 
-    def __init__(self, batches) -> None:
-        self._batches = set(batches)
+    def __init__(self, products) -> None:
+        self._products = set(products)
 
-    def add(self, batch):
-        self._batches.add(batch)
+    def add(self, product):
+        self._products.add(product)
 
-    def get(self, reference):
-        return next(b for b in self._batches if b.reference == reference)
+    def get(self, sku):
+        return next((b for b in self._products if b.sku == sku), None)
 
-    def list(self):
-        return list(self._batches)
     
 
 class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
@@ -30,7 +28,7 @@ class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
     Фейковая реализация UoW для тестирования
     """
     def __init__(self) -> None:
-        self.batches = FakeRepository([])
+        self.products = FakeRepository([])
         self.commited = False
 
     def commit(self) -> None:
@@ -40,19 +38,17 @@ class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
         pass
 
 
-def test_add_batch():
+def test_add_batch_for_new_product():
     uow = FakeUnitOfWork()
     services.add_batch('b1', 'CRUNCHY-ARMCHAIR', 100, None, uow)
-    assert uow.batches.get('b1') is not None
+    assert uow.products.get('CRUNCHY-ARMCHAIR') is not None
     assert uow.commited
 
-
-def test_allocate_returns_allocation():
+def test_add_batch_for_existing_product():
     uow = FakeUnitOfWork()
-    services.add_batch('batch1', 'COMPLICATED-LAMP', 100, None, uow)
-    result = services.allocate('batch1', 'COMPLICATED-LAMP', 100, uow)
-    assert result == 'batch1'
-
+    services.add_batch('b1', 'CRUNCHY-ARMCHAIR', 100, None, uow)
+    services.add_batch('b2', 'CRUNCHY-ARMCHAIR', 99, None, uow)
+    assert 'b2' in [b.reference for b in uow.products.get('CRUNCHY-ARMCHAIR').batches]
 
 def test_returns_allocation():
     uow = FakeUnitOfWork()
@@ -75,34 +71,3 @@ def test_commits():
     services.allocate('o1', 'COMPLICATED-LAMP', 10, uow)
     assert uow.commited is True
 
-def test_deallocate_decrements_available_quantity():
-    """
-    Тест для проверки отмены размещения позиции в партии
-    """
-    uow = FakeUnitOfWork()
-    services.add_batch("b1", 'BLUE-PLINTH', 100, None, uow)
-    services.allocate('o1', 'BLUE-PLINTH', 10, uow)
-    batch = uow.batches.get(reference='b1')
-    assert batch.available_quantity == 90
-    services.deallocate('o1', 'BLUE-PLINTH', 10, uow)
-    assert batch.available_quantity == 100
-
-
-def test_deallocate_decrements_correct_quantity():
-    ...  #  TODO - check that we decrement the right sku
-    uow = FakeUnitOfWork()
-    services.add_batch("b1", 'WHITE-TABLE', 100, None, uow)
-    ref_batch = services.allocate('o1', 'WHITE-TABLE', 10, uow)
-    batch = uow.batches.get(reference='b1')
-    assert ref_batch == batch.reference
-    services.deallocate('o1', 'WHITE-TABLE', 10, uow)
-    assert batch.available_quantity == 100
-
-
-def test_trying_to_deallocate_unallocated_batch():
-    ...  #  TODO: should this error or pass silently? up to you.
-    uow = FakeUnitOfWork()
-    services.add_batch("b1", 'RED-CHAIR', 100, None, uow)
-    batch = uow.batches.get(reference='b1')    
-    with pytest.raises(NoOrderInBatch, match=f'Товарная позиция RED-CHAIR не размещена ни в одной партии'):
-        services.deallocate('o1', 'RED-CHAIR', 10, uow)

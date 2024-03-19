@@ -1,37 +1,39 @@
-from typing import Optional, ContextManager
+from typing import Optional
 
 from datetime import date
 from src.allocation import domain
-from src.allocation.domain.models import OrderLine, Batch
-from src.allocation.adapters.repository import AbstractRepositoriy
+from src.allocation.domain.models import OrderLine, Batch, Product
 from src.allocation.domain.exceptions import InvalidSku
 from src.allocation.service_layer import unit_of_work
 
 
-def is_valid_sku(sku, batches):
-    return sku in {b.sku for b in batches}
-
+# def is_valid_sku(sku, batches):
+#     return sku in {b.sku for b in batches}
 
  
-def add_batch(ref: str, sku: str, qty: int, eta: Optional[date], start_uow: ContextManager[unit_of_work.AbstractUnitOfWork]) -> None:
+def add_batch(ref: str, sku: str, qty: int, eta: Optional[date], uow: unit_of_work.AbstractUnitOfWork) -> None:
     """
     Служба сервисного слоя для пополнения товарных запасов партии
     """
-    with start_uow as uow:
-        uow.batches.add(Batch(ref, sku, qty, eta))
-        uow.commit()    
+    with uow:
+        product = uow.products.get(sku=sku)
+        if product is None:
+            product = Product(sku, batches=[])
+            uow.products.add(product)
+        product.batches.append(Batch(ref, sku, qty, eta))    
+        uow.commit()
 
 
-def allocate(orderid: str, sku: str, qty: int, start_uow: ContextManager[unit_of_work.AbstractUnitOfWork]) -> str:
+def allocate(orderid: str, sku: str, qty: int, uow: unit_of_work.AbstractUnitOfWork) -> str:
     """
     Служба сервисного слоя для размещения товарной позиции в партии
     """
     line = OrderLine(orderid, sku, qty)
-    with start_uow as uow:
-        batches = uow.batches.list()
-        if not is_valid_sku(line.sku, batches):     # проверка на правильность введенных данных
+    with uow:
+        product = uow.products.get(sku=line.sku)
+        if product is None:     # проверка на правильность введенных данных
             raise InvalidSku(f'Недопустимый артикул {line.sku}')
-        batchref = domain.models.allocate(line, batches)       # вызов службы предметной области
+        batchref = product.allocate(line)       # вызов службы предметной области
         uow.commit()
     return batchref
     
@@ -42,9 +44,9 @@ def deallocate(orderid: str, sku: str, qty: int, uow: unit_of_work.AbstractUnitO
     """    
     line = OrderLine(orderid, sku, qty)
     with uow:
-        batches = uow.batches.list()
-        if not is_valid_sku(line.sku, batches):  
+        product = uow.products.get(sku=line.sku)
+        if product is None:     # проверка на правильность введенных данных
             raise InvalidSku(f'Недопустимый артикул {line.sku}')
-        batchref = domain.models.deallocate(line, batches)
+        batchref = product.deallocate(line)
         uow.commit()
     return batchref

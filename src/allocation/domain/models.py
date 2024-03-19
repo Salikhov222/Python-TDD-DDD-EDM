@@ -80,27 +80,32 @@ class Batch:
         return line in self._allocations
 
 
-def allocate(line: OrderLine, batches: List[Batch]) -> str:
+class Product:
     """
-    Автономная функция для службы предметной области, а именно
-    для службы размещения товарных позиций в конкретном наборе партий
+    Агрегат, который содержит в себе партии определенного артикула как единое целое
+    Для доступа к партиям и к службам предметной области теперь используется Product
+    Следовательно во всех абстракциях постоянного хранилища данных (AbstractRepositoriy, FakeRepository, SqlAclhemyRepository, UoW) 
+    меняется структура: batches -> products
     """
-    try:
-        batch = next(b for b in sorted(batches) if b.can_allocate(line))
-        batch.allocate(line)
-        return batch.reference
-    except StopIteration:
-        raise OutOfStock(f'Артикула {line.sku} нет в наличии')
+    def __init__(self, sku: str, batches: List[Batch], version_number: int = 0) -> None:
+        self.sku = sku      # артикул разных партий, которые представляют себя единым целым - продуктом
+        self.batches = batches      # список партий одного артикула
+        self.version_number = version_number    # маркер, позволяющий отслеживать изменение версий продукта при параллелизме транзакций
 
+    def allocate(self, line: OrderLine) -> str:
+        try:
+            batch = next(b for b in sorted(self.batches) if b.can_allocate(line))
+            batch.allocate(line)
+            self.version_number += 1
+            return batch.reference
+        except StopIteration:
+            raise OutOfStock(f'Артикула {line.sku} нет в наличии')
 
-def deallocate(line: OrderLine, batches: List[Batch]) -> str:
-    """
-    Служба предметной области для отмены размещения товарной позиции в конкретной партии
-    """
-    try:
-        batch = next(b for b in sorted(batches) if b.can_deallocate(line))
-        batch.deallocate(line)
-        return batch.reference
-    except StopIteration:
-        raise NoOrderInBatch(f'Товарная позиция {line.sku} не размещена ни в одной партии')
-
+    def deallocate(self, line: OrderLine) -> str:
+        try:
+            batch = next(b for b in sorted(self.batches) if b.can_deallocate(line))
+            batch.deallocate(line)
+            self.version_number -= 1
+            return batch.reference
+        except StopIteration:
+            raise NoOrderInBatch(f'Товарная позиция {line.sku} не размещена ни в одной партии')

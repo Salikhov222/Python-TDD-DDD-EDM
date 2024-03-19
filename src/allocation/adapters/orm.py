@@ -13,18 +13,23 @@ order_lines = Table(
     Column('orderid', String(255)),
 )
 
+products = Table(
+    'products', metadata,
+    Column('sku', String(255), primary_key=True),
+    Column("version_number", Integer, nullable=False, server_default="0"),
+)
+
 batches = Table(
     'batches', metadata,
     Column('id', Integer, primary_key=True, autoincrement=True),
     Column('reference', String(255)),
-    Column('sku', String(255)),
+    Column('sku', ForeignKey('products.sku')),
     Column('_purchased_quantity', Integer, nullable=False),
     Column("eta", Date, nullable=True),
 )
 
 allocations = Table(
-    "allocations",
-    metadata,
+    "allocations", metadata,
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("orderline_id", ForeignKey("order_lines.id")),
     Column("batch_id", ForeignKey("batches.id")),
@@ -41,3 +46,4 @@ def start_mappers():
             )
         }
     )
+    mapper_reg.map_imperatively(models.Product, products, properties={"batches": relationship(batches_mapper)})

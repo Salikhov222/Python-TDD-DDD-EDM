@@ -1,25 +1,11 @@
 # Сквозные тесты Е2Е для всего, что связано с вебом
 
 import pytest
-from src.allocation import config
 import requests
-import uuid
 
+from src.allocation import config
+from tests.random_refs import random_batchref, random_orderid, random_sku
 
-def random_suffix():
-    return uuid.uuid4().hex[:6]
-
-
-def random_sku(name=""):
-    return f"sku-{name}-{random_suffix()}"
-
-
-def random_batchref(name=""):
-    return f"batch-{name}-{random_suffix()}"
-
-
-def random_orderid(name=""):
-    return f"order-{name}-{random_suffix()}"
 
 
 def post_to_add_batch(ref, sku, qty, eta):
@@ -32,7 +18,7 @@ def post_to_add_batch(ref, sku, qty, eta):
     assert r.status_code == 200
 
 
-def test_happy_path_returns_200_and_allocated_batch():
+def test_happy_path_returns_200_and_allocated_batch(postgres_db):
     """
     Первый сквозной тест для проверки использования конечной точки API 
     и связывания с реальной БД
@@ -55,8 +41,8 @@ def test_happy_path_returns_200_and_allocated_batch():
     assert r.status_code == 200
     assert r.json()['batchref'] == earlybatch
     
-    
-def test_unhappy_path_returns_400_and_error_message():
+
+def test_unhappy_path_returns_400_and_error_message(postgres_db):
     unknown_sku, orderid = random_sku(), random_orderid()
     data = {'orderid': orderid, 'sku': unknown_sku, 'qty': 20}
     url = config.get_api_url()
@@ -65,7 +51,7 @@ def test_unhappy_path_returns_400_and_error_message():
     assert r.json()['detail'] == f'Недопустимый артикул {unknown_sku}'
 
 
-def test_deallocate():
+def test_deallocate(postgres_db):
     """
     Сквозной тест для проверки работы конечной точки отмены размещения заказа:
     1) Сперва размещаем заказ в первой партии

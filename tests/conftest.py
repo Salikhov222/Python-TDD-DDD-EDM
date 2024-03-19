@@ -1,9 +1,10 @@
+import time
 import pytest
 from src.allocation import config
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, clear_mappers
-from sqlalchemy.sql import text
+from sqlalchemy.exc import OperationalError
 from src.allocation.adapters.orm import metadata, start_mappers
 
 
@@ -25,11 +26,21 @@ def sqlite_session_factory(in_memory_db):
 def sqlite_session(sqlite_session_factory):
     return sqlite_session_factory()
 
+# Проверка работы службы PostgreSQL сервера
+def wait_for_postgres_to_come_up(engine):
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        try:
+            return engine.connect()
+        except OperationalError:
+            time.sleep(0.5)
+    pytest.fail("Postgres never came up")
 
 # Создание БД postgres
 @pytest.fixture(scope='session')
 def postgres_db():
     engine = create_engine(config.get_postgres_uri())
+    wait_for_postgres_to_come_up(engine)
     metadata.create_all(engine)
     return engine
 

@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from src.allocation.domain import models
 
 
-class AbstractRepositoriy(ABC):
+class AbstractProductRepositoriy(ABC):
     """
      Базовый абстрактный класс-родитель
      add() и get() - два абстрактных метода, которые классы-наследники обязаны реализовать
@@ -10,15 +10,15 @@ class AbstractRepositoriy(ABC):
     """
 
     @abstractmethod
-    def add(self, batch: models.Batch):
+    def add(self, product: models.Product):
         raise NotImplementedError
     
     @abstractmethod
-    def get(self, reference) -> models.Batch:
+    def get(self, sku: str) -> models.Product:
         raise NotImplementedError
     
 
-class SqlAlchemyRepository(AbstractRepositoriy):
+class SqlAlchemyRepository(AbstractProductRepositoriy):
     """
     Основной класс-репозиторий для работы с приложением
     """
@@ -26,11 +26,9 @@ class SqlAlchemyRepository(AbstractRepositoriy):
     def __init__(self, session):
         self.session = session
 
-    def add(self, batch):
-        self.session.add(batch)
+    def add(self, product):
+        self.session.add(product)
 
-    def get(self, reference):
-        return self.session.query(models.Batch).filter_by(reference=reference).one()
+    def get(self, sku):
+        return self.session.query(models.Product).filter_by(sku=sku).first()
 
-    def list(self):
-        return self.session.query(models.Batch).all()
