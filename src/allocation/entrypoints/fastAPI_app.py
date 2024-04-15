@@ -1,13 +1,9 @@
 from fastapi import FastAPI, HTTPException, status
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from src.allocation.domain.api_models import APIAllocateModel, APIDeallocateModel, APIAddBatchModel
-from src.allocation import config
 from src.allocation.domain import models
 from src.allocation.service_layer import services, unit_of_work
 from src.allocation.adapters import orm
-from src.allocation.adapters import repository
 
 orm.start_mappers()
 app = FastAPI()

@@ -1,7 +1,6 @@
 from datetime import date, timedelta
 from src.allocation.domain.models import OrderLine, Batch, Product
-from src.allocation.domain.exceptions import OutOfStock
-import pytest
+from src.allocation.domain import events
 
 
 today = date.today()
@@ -56,7 +55,7 @@ def test_returns_allocated_batch_ref():
     assert allocation == in_stock_batch.reference
 
 
-def test_raises_out_of_stock_exception_if_cannot_allocate():
+def test_records_out_of_stock_exception_if_cannot_allocate():
     """
     Тест для проверки вызова исключения при отсутствии товара в наличии
     """
@@ -64,7 +63,7 @@ def test_raises_out_of_stock_exception_if_cannot_allocate():
     product = Product(sku='SMALL-FORK', batches=[batch])
     product.allocate(OrderLine('order1', "SMALL-FORK", 10))
 
-    with pytest.raises(OutOfStock, match='SMALL-FORK'):
-        product.allocate(OrderLine('order2', 'SMALL-FORK', 1))
-
+    allocation = product.allocate(OrderLine('order2', 'SMALL-FORK', 1))
+    assert product.events[-1] == events.OutOfStock(sku='SMALL-FORK')
+    assert allocation is None
     

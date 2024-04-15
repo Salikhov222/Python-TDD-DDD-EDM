@@ -3,6 +3,7 @@ from typing import Optional, List
 from datetime import date
 from dataclasses import dataclass
 from src.allocation.domain.exceptions import OutOfStock, NoOrderInBatch
+from src.allocation.domain import events
 
 
 @dataclass(unsafe_hash=True)     
@@ -91,6 +92,7 @@ class Product:
         self.sku = sku      # артикул разных партий, которые представляют себя единым целым - продуктом
         self.batches = batches      # список партий одного артикула
         self.version_number = version_number    # маркер, позволяющий отслеживать изменение версий продукта при параллелизме транзакций
+        self.events = []        # тип: List[events.Event], события предметной области
 
     def allocate(self, line: OrderLine) -> str:
         try:
@@ -99,7 +101,8 @@ class Product:
             self.version_number += 1
             return batch.reference
         except StopIteration:
-            raise OutOfStock(f'Артикула {line.sku} нет в наличии')
+            self.events.append(events.OutOfStock(line.sku))     # инициировать OutOfStock(f'Артикула {line.sku} нет в наличии')
+            return None 
 
     def deallocate(self, line: OrderLine) -> str:
         try:

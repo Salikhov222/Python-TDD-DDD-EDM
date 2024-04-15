@@ -1,16 +1,14 @@
 from typing import Optional
 
 from datetime import date
-from src.allocation import domain
 from src.allocation.domain.models import OrderLine, Batch, Product
 from src.allocation.domain.exceptions import InvalidSku
-from src.allocation.service_layer import unit_of_work
+from . import messagebus, unit_of_work
 
 
-# def is_valid_sku(sku, batches):
-#     return sku in {b.sku for b in batches}
+def is_valid_sku(sku, batches):
+    return sku in {b.sku for b in batches}
 
- 
 def add_batch(ref: str, sku: str, qty: int, eta: Optional[date], uow: unit_of_work.AbstractUnitOfWork) -> None:
     """
     Служба сервисного слоя для пополнения товарных запасов партии
@@ -23,7 +21,6 @@ def add_batch(ref: str, sku: str, qty: int, eta: Optional[date], uow: unit_of_wo
         product.batches.append(Batch(ref, sku, qty, eta))    
         uow.commit()
 
-
 def allocate(orderid: str, sku: str, qty: int, uow: unit_of_work.AbstractUnitOfWork) -> str:
     """
     Служба сервисного слоя для размещения товарной позиции в партии
@@ -35,8 +32,7 @@ def allocate(orderid: str, sku: str, qty: int, uow: unit_of_work.AbstractUnitOfW
             raise InvalidSku(f'Недопустимый артикул {line.sku}')
         batchref = product.allocate(line)       # вызов службы предметной области
         uow.commit()
-    return batchref
-    
+        return batchref
 
 def deallocate(orderid: str, sku: str, qty: int, uow: unit_of_work.AbstractUnitOfWork) -> str:
     """

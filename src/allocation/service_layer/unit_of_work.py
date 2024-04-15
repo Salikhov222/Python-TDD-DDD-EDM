@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from src.allocation import config
 from src.allocation.adapters import repository
+from src.allocation.service_layer import messagebus
 
 
 DEFAULT_SESSION_FACTORY = sessionmaker(bind=create_engine(
@@ -20,9 +21,19 @@ class AbstractUnitOfWork(ABC):  # Абстрактный контекстный 
     
     def __enter__(self):
         pass
+    
+    def commit(self):
+        self._commit()
+        self.publish_events()
+
+    def publish_events(self):
+        for product in self.products.seen:
+            while product.events:
+                event = product.events.pop(0)
+                messagebus.handle(event)
 
     @abstractmethod
-    def commit(self):
+    def _commit(self):
         raise NotImplementedError
     
     @abstractmethod
@@ -48,7 +59,7 @@ class SqlAlchemyUnitOfWork(AbstractUnitOfWork):     # Реализация аб�
         super().__exit__(*args)
         self.session.close()
 
-    def commit(self) -> None:
+    def _commit(self) -> None:
         self.session.commit()
 
     def rollback(self) -> None:
