@@ -13,12 +13,13 @@ class FakeRepository(repository.AbstractProductRepositoriy):
     """
 
     def __init__(self, products) -> None:
+        super().__init__()
         self._products = set(products)
 
-    def add(self, product):
+    def _add(self, product):
         self._products.add(product)
 
-    def get(self, sku):
+    def _get(self, sku):
         return next((b for b in self._products if b.sku == sku), None)
 
     
@@ -31,7 +32,7 @@ class FakeUnitOfWork(unit_of_work.AbstractUnitOfWork):
         self.products = FakeRepository([])
         self.commited = False
 
-    def commit(self) -> None:
+    def _commit(self) -> None:
         self.commited = True
 
     def rollback(self) -> None:

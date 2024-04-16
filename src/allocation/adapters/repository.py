@@ -1,3 +1,4 @@
+from typing import Set
 from abc import ABC, abstractmethod
 from src.allocation.domain import models
 
@@ -10,7 +11,7 @@ class AbstractProductRepositoriy(ABC):
     """
 
     def __init__(self) -> None:
-        self.seen = set()   # type: set[models.Product]
+        self.seen = set()   # атрибут, отслеживающий агрегаты, type: set[models.Product]
 
     def add(self, product: models.Product):
         self._add(product)
@@ -37,7 +38,7 @@ class SqlAlchemyRepository(AbstractProductRepositoriy):
     """
 
     def __init__(self, session):
-        super.__init__()
+        super().__init__()      # для инициализации множества seen
         self.session = session
 
     def _add(self, product):

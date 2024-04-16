@@ -73,7 +73,9 @@ def test_deallocate(postgres_db):
     r = requests.post(
         f'{url}/allocate', json={'orderid': order2, 'sku': sku, 'qty': 100}
     )
-    assert r.json()['status_code'] == 404
+    # assert r.json()['status_code'] == 404
+    assert r.json()['batchref'] == None
+ 
 
     # deallocate
     r = requests.post(

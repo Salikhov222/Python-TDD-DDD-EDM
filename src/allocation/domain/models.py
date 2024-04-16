@@ -4,6 +4,7 @@ from datetime import date
 from dataclasses import dataclass
 from src.allocation.domain.exceptions import OutOfStock, NoOrderInBatch
 from src.allocation.domain import events
+from src.allocation.domain.events import Event
 
 
 @dataclass(unsafe_hash=True)     
@@ -82,6 +83,7 @@ class Batch:
 
 
 class Product:
+    events: List[Event] = []    # тип: List[events.Event], события предметной области
     """
     Агрегат, который содержит в себе партии определенного артикула как единое целое
     Для доступа к партиям и к службам предметной области теперь используется Product
@@ -92,7 +94,6 @@ class Product:
         self.sku = sku      # артикул разных партий, которые представляют себя единым целым - продуктом
         self.batches = batches      # список партий одного артикула
         self.version_number = version_number    # маркер, позволяющий отслеживать изменение версий продукта при параллелизме транзакций
-        self.events = []        # тип: List[events.Event], события предметной области
 
     def allocate(self, line: OrderLine) -> str:
         try:

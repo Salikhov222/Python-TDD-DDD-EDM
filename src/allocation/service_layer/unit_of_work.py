@@ -20,13 +20,13 @@ class AbstractUnitOfWork(ABC):  # Абстрактный контекстный 
         self.rollback()
     
     def __enter__(self):
-        pass
+        return self
     
     def commit(self):
         self._commit()
         self.publish_events()
 
-    def publish_events(self):
+    def publish_events(self):       # перебор всех объектов после фиксации и передача событий в шину сообщений
         for product in self.products.seen:
             while product.events:
                 event = product.events.pop(0)
