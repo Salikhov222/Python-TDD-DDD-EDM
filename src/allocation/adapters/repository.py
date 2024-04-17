@@ -1,7 +1,7 @@
 from typing import Set
 from abc import ABC, abstractmethod
 from src.allocation.domain import models
-
+from src.allocation.adapters import orm
 
 class AbstractProductRepositoriy(ABC):
     """
@@ -22,6 +22,12 @@ class AbstractProductRepositoriy(ABC):
         if product:
             self.seen.add(product)
         return product
+    
+    def get_by_batchref(self, batchref) -> models.Product:
+        product = self._get_by_batchref(batchref)
+        if product:
+            self.seen.add(product)
+        return product
 
     @abstractmethod
     def _add(self, product: models.Product):
@@ -29,6 +35,10 @@ class AbstractProductRepositoriy(ABC):
     
     @abstractmethod
     def _get(self, sku: str) -> models.Product:
+        raise NotImplementedError
+    
+    @abstractmethod
+    def _get_by_batchref(self, batchref: str) -> models.Product:
         raise NotImplementedError
     
 
@@ -46,4 +56,7 @@ class SqlAlchemyRepository(AbstractProductRepositoriy):
 
     def _get(self, sku):
         return self.session.query(models.Product).filter_by(sku=sku).first()
+    
+    def _get_by_batchref(self, batchref):   # поиск продукта по ссылке партии
+        return self.session.query(models.Product).join(models.Batch).filter_by(orm.batches.c.reference == batchref).first()
 

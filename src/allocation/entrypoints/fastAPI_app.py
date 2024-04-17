@@ -1,9 +1,10 @@
 from fastapi import FastAPI, HTTPException, status
 
 from src.allocation.domain.api_models import APIAllocateModel, APIDeallocateModel, APIAddBatchModel
-from src.allocation.domain import models
-from src.allocation.service_layer import services, unit_of_work
+from src.allocation.domain import models, events
+from src.allocation.service_layer import unit_of_work, messagebus
 from src.allocation.adapters import orm
+from src.allocation.domain.exceptions import InvalidSku
 
 orm.start_mappers()
 app = FastAPI()
@@ -15,14 +16,15 @@ async def allocate_endpoint(body: APIAllocateModel):
     """
     uow = unit_of_work.SqlAlchemyUnitOfWork()
     try:
-        batchref = services.allocate(body.orderid, body.sku, body.qty, uow)       # передача данных в службу предметной области
-    except (models.OutOfStock, services.InvalidSku) as e:
+        event = events.AllocationRequired(body.orderid, body.sku, body.qty)       # создание экземпляра события размещения заказа
+        result = messagebus.handle(event, uow)      # передача его в шину сообщений
+    except InvalidSku as e:
         return HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e))
     
     return {
-        'batchref': batchref
+        'batchref': result.pop(0)
     }
 
 
@@ -33,15 +35,16 @@ async def deallocate_endpoint(body: APIDeallocateModel):
     """
     uow = unit_of_work.SqlAlchemyUnitOfWork()
     try:
-        batchref = services.deallocate(body.orderid, body.sku, body.qty, uow)
-    except (models.NoOrderInBatch, services.InvalidSku) as e:
+        event = events.DeallocationRequired(body.orderid, body.sku, body.qty, uow)
+        result = messagebus.handle(event, uow)
+    except (models.NoOrderInBatch, InvalidSku) as e:
         return HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
         )
     
     return {
-        'batchref': batchref
+        'batchref': result.pop(0)
     }
 
 
@@ -52,7 +55,8 @@ async def add_batch(body: APIAddBatchModel):
     """
     uow = unit_of_work.SqlAlchemyUnitOfWork()
     try:
-        services.add_batch(body.ref, body.sku, body.qty, body.eta, uow)
+        event = events.BatchCreated(body.ref, body.sku, body.qty, body.eta)
+        result = messagebus.handle(event, uow)
     except Exception as e:
         return HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
