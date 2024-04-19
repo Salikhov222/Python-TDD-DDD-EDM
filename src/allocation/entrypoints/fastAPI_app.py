@@ -1,7 +1,8 @@
+import uvicorn
 from fastapi import FastAPI, HTTPException, status
 
 from src.allocation.domain.api_models import APIAllocateModel, APIDeallocateModel, APIAddBatchModel
-from src.allocation.domain import models, events
+from src.allocation.domain import models, events, commands
 from src.allocation.service_layer import unit_of_work, messagebus
 from src.allocation.adapters import orm
 from src.allocation.domain.exceptions import InvalidSku
@@ -15,9 +16,10 @@ async def allocate_endpoint(body: APIAllocateModel):
     Простая реализация конечной точки для размещения заказа в партии товара
     """
     uow = unit_of_work.SqlAlchemyUnitOfWork()
+    msgBus = messagebus.MessageBus()
     try:
-        event = events.AllocationRequired(body.orderid, body.sku, body.qty)       # создание экземпляра события размещения заказа
-        result = messagebus.handle(event, uow)      # передача его в шину сообщений
+        command = commands.Allocate(body.orderid, body.sku, body.qty)       # создание экземпляра события размещения заказа
+        result = msgBus.handle(command, uow)      # передача его в шину сообщений
     except InvalidSku as e:
         return HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -34,9 +36,10 @@ async def deallocate_endpoint(body: APIDeallocateModel):
     Конечная точка для отмены размещения позиции в партии
     """
     uow = unit_of_work.SqlAlchemyUnitOfWork()
+    msgBus = messagebus.MessageBus()
     try:
-        event = events.DeallocationRequired(body.orderid, body.sku, body.qty, uow)
-        result = messagebus.handle(event, uow)
+        command = commands.Deallocate(body.orderid, body.sku, body.qty)
+        result = msgBus.handle(command, uow)
     except (models.NoOrderInBatch, InvalidSku) as e:
         return HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -54,9 +57,10 @@ async def add_batch(body: APIAddBatchModel):
     Конечная точка для добавления партии товара
     """
     uow = unit_of_work.SqlAlchemyUnitOfWork()
+    msgBus = messagebus.MessageBus()
     try:
-        event = events.BatchCreated(body.ref, body.sku, body.qty, body.eta)
-        result = messagebus.handle(event, uow)
+        command = commands.CreateBatch(body.ref, body.sku, body.qty, body.eta)
+        result = msgBus.handle(command, uow)
     except Exception as e:
         return HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -65,3 +69,6 @@ async def add_batch(body: APIAddBatchModel):
     return {
         'OK'
     }
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)

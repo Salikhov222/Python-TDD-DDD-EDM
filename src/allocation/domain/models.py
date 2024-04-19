@@ -3,7 +3,7 @@ from typing import Optional, List
 from datetime import date
 from dataclasses import dataclass
 from src.allocation.domain.exceptions import NoOrderInBatch
-from src.allocation.domain import events
+from src.allocation.domain import events, commands
 from src.allocation.domain.events import Event
 
 
@@ -124,5 +124,5 @@ class Product:
         while batch.available_quantity < 0:
             line = batch.deallocate_one()
             self.events.append(
-                events.AllocationRequired(line.orderid, line.sku, line.qty)
+                commands.Allocate(line.orderid, line.sku, line.qty)
             )
