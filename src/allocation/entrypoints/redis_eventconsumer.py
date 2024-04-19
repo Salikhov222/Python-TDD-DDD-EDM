@@ -10,7 +10,7 @@ r = redis.Redis(**config.get_redis_hist_and_port())
 
 
 def main():
-    orm.start_mappers() 
+    orm.start_mappers()
     pubsub = r.pubsub(ignore_subscribe_messages=True)
     pubsub.subscribe('change_batch_quantity')       # подписка клиетна (веб-приложения) на канал change_batch_quantity
 
