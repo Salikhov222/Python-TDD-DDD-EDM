@@ -52,10 +52,6 @@ class FakeMessageBus(messagebus.AbstractMessageBus):
         self.events_published = []      # тип: List[events.Event]
         self.HANDLERS = {
             events.OutOfStock: [lambda e: self.events_published.append(e)],
-            events.BatchCreated: [lambda e: self.events_published.append(e)],
-            events.AllocationRequired: [lambda e: self.events_published.append(e)],
-            events.DeallocationRequired: [lambda e: self.events_published.append(e)],
-            events.BatchQuantityChanged: [lambda e: self.events_published.append(e)]
         }
 
 

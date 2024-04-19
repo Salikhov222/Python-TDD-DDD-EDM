@@ -11,25 +11,8 @@ class OutOfStock(Event):    # событие отсутствия товара
     sku: str
 
 @dataclass
-class BatchCreated(Event):      # событие добавления партии товара
-    ref: str
-    sku: str
-    qty: int
-    eta: Optional[date] = None
-
-@dataclass
-class AllocationRequired(Event):     # событие размещения заказа в партии
+class Allocated(Event):     # событие о размещение товарной позиции в определенной партии
     orderid: str
     sku: str
     qty: int
-
-@dataclass
-class DeallocationRequired(Event):  # событие отмены размещения заказа в партии
-    orderid: str
-    sku: str
-    qty: int
-
-@dataclass
-class BatchQuantityChanged(Event):      # событие изменения размера партии
-    ref: str
-    qty: str
+    batchref: str

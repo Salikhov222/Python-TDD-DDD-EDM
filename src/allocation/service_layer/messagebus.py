@@ -45,7 +45,8 @@ class MessageBus(AbstractMessageBus):
     Реальная шина сообщений
     """
     EVENT_HANDLERS = {
-        events.OutOfStock: [handlers.send_out_of_stock_notification]
+        events.OutOfStock: [handlers.send_out_of_stock_notification],
+        events.Allocated: [handlers.publish_allocated_event]
     }   # тип: Dict[Type[events.Event], List[Callable]]
 
     COMMAND_HANDLERS = {
@@ -87,7 +88,7 @@ class MessageBus(AbstractMessageBus):
                         handler(event, uow=uow)
                         queue.extend(uow.collect_new_events())
             except RetryError as retry_failure:
-                logger.error('Не получилось обработать событие %s отказ!', retry_failure.last_attempt.attempt_number)
+                logger.error('Не получилось обработать событие %s %s раз, отказ!', event, retry_failure.last_attempt.attempt_number)
                 continue
     
     def handle_command(

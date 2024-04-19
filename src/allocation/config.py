@@ -15,4 +15,9 @@ def get_api_url():
     host = os.getenv("API_HOST")
     port = 8000
     return f"http://{host}:{port}"
-    
+
+
+def get_redis_host_and_port():
+    host = os.getenv("REDIS_HOST")
+    port = 6379
+    return dict(host=host, port=port)

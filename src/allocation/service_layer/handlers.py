@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from src.allocation.domain.models import OrderLine, Batch, Product
 from src.allocation.domain.exceptions import InvalidSku
 from src.allocation.domain import events
-from src.allocation.adapters import email
+from src.allocation.adapters import email, redis_eventpublisher
 
 if TYPE_CHECKING:   # для разрешения конфликта циклического импорта
     from . import unit_of_work    
@@ -35,7 +35,7 @@ def allocate(event: events.AllocationRequired, uow: unit_of_work.AbstractUnitOfW
         return batchref
 
 # обработчик события отсутствия товара в наличии 
-def send_out_of_stock_notification(event: events.OutOfStock):
+def send_out_of_stock_notification(event: events.OutOfStock, uow: unit_of_work.AbstractUnitOfWork):
     email.send_mail(
         'stock.@made.com',
         f'Артикула {event.sku} нет в наличии'
@@ -58,3 +58,8 @@ def change_batch_quantity(event: events.BatchQuantityChanged, uow: unit_of_work.
     with uow:
         product = uow.products.get_by_batchref(batchref=event.ref)
         product.change_batch_quantity(ref=event.ref, qty=event.qty)
+
+def publish_allocated_event(
+        event: events.Allocated, uow: unit_of_work.AbstractUnitOfWork
+):
+    redis_eventpublisher.publish('line_allocated', event)
