@@ -5,7 +5,6 @@ from src.allocation.adapters import repository
 from src.allocation.service_layer import unit_of_work, messagebus, handlers
 from src.allocation.domain import events, commands
 
-
 class FakeRepository(repository.AbstractProductRepositoriy):
     """
     Фейковый репозиторий для тестирования приложения

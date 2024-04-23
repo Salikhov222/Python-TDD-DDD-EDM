@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI, HTTPException, status
 
 from src.allocation.domain.api_models import APIAllocateModel, APIDeallocateModel, APIAddBatchModel
-from src.allocation.domain import models, events, commands
+from src.allocation.domain import models, commands
 from src.allocation.service_layer import unit_of_work, messagebus
 from src.allocation.adapters import orm
 from src.allocation.domain.exceptions import InvalidSku

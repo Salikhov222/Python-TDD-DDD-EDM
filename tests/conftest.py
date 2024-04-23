@@ -1,10 +1,14 @@
 import time
 import pytest
-from src.allocation import config
-
+import redis
+import shutil
+import subprocess
+from tenacity import retry, stop_after_delay
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, clear_mappers
 from sqlalchemy.exc import OperationalError
+
+from src.allocation import config
 from src.allocation.adapters.orm import metadata, start_mappers
 
 
@@ -54,3 +58,23 @@ def postgres_session_factory(postgres_db):
 @pytest.fixture
 def postgres_session(postgres_session_factory):
     return postgres_session_factory()
+
+@retry(stop=stop_after_delay(10))
+def wait_for_redis_to_come_up():
+    r = redis.Redis(**config.get_redis_host_and_port())
+    return r.ping()
+
+# перезапуск службы Redis PubSub
+@pytest.fixture
+def restart_redis_pubsub():
+    wait_for_redis_to_come_up()
+    if not shutil.which("docker-compose"):
+        print("skipping restart, assumes running in container")
+        return
+    try:
+        subprocess.run(
+            ['docker', 'compose', 'restart', '-t', '0', 'redis_pubsub'],
+            check=True
+        )
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError(f"command {e.cmd} return with error (code {e.returncode}): {e.output}")

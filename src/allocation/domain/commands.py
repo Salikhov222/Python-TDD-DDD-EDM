@@ -11,7 +11,6 @@ class Allocate(Command):    # команда размещения заказа
     sku: str
     qty: int
 
-
 @dataclass
 class Deallocate(Command):    # команда отмены размещения заказа
     orderid: str

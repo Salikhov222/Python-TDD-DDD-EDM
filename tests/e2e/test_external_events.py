@@ -1,11 +1,11 @@
 import json
-import pytest
+
 from tenacity import Retrying, stop_after_delay
 from tests.random_refs import random_batchref, random_orderid, random_sku
 from . import api_client, redis_client
 
-@pytest.mark.skip(reason='messages почему то пустой')
-def test_change_batch_quantity_leading_to_reallocation():
+# TODO: поднять для данного теста контейнер redis_pubsub в Docker
+def test_change_batch_quantity_leading_to_reallocation():    
     # начать с двух партий и заказа, размещенного в одной из них
     orderid, sku = random_orderid(), random_sku()
     earlier_batch, later_batch = random_batchref('old'), random_batchref('newer')
@@ -30,7 +30,6 @@ def test_change_batch_quantity_leading_to_reallocation():
             message = subscription.get_message(timeout=1)
             if message:
                 messages.append(message)
-                print(messages)
             data = json.loads(messages[-1]['data'])
             assert data['orderid'] == orderid
             assert data['batchref'] == later_batch
