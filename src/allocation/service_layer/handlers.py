@@ -63,4 +63,4 @@ def change_batch_quantity(cmd: commands.ChangeBatchQuantity, uow: unit_of_work.A
 def publish_allocated_event(
         event: events.Allocated, uow: unit_of_work.AbstractUnitOfWork
 ):
-    redis_eventpublisher.publish('line_allocated', event)
+    redis_eventpublisher.publish(event)
