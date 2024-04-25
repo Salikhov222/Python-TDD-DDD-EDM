@@ -16,6 +16,7 @@ class TestAllocate:
         """
         # random_sku(), random_batchref - вспомогательные функции для генерации строки для артикула и ссылки
         # используются как один из способов предотвратить влияние различных тестов и запусков друг на друга при работа с реальной БД
+        orderid = random_orderid()
         sku, othersku = random_sku(), random_sku('other')
         earlybatch = random_batchref(1)
         laterbatch = random_batchref(2)
@@ -25,17 +26,26 @@ class TestAllocate:
         api_client.post_to_add_batch(earlybatch, sku, 100, '2011-01-01')
         api_client.post_to_add_batch(otherbatch, othersku, 100, None)
 
-        r = api_client.post_to_allocate(random_orderid(), sku, 3)
+        r = api_client.post_to_allocate(orderid, sku, 3)
         
         assert r.status_code == 200
         assert r.json()['batchref'] == earlybatch
+
+        r = api_client.get_allocation(orderid)
+        assert r.ok
+        assert r.json() == [
+            {'sku': sku, 'batchref': earlybatch}
+        ]
         
 
     def test_unhappy_path_returns_400_and_error_message(postgres_db):
         unknown_sku, orderid = random_sku(), random_orderid()
-        r = api_client.post_to_allocate(orderid, unknown_sku, 3)
-        assert r.json()['status_code'] == 404
+        r = api_client.post_to_allocate(orderid, unknown_sku, 3, expect_success=False)
+        assert r.status_code == 404
         assert r.json()['detail'] == f'Недопустимый артикул {unknown_sku}'
+
+        r = api_client.get_allocation(orderid)
+        assert r.status_code == 404
 
 
 class TestDeallocate:

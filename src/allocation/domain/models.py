@@ -118,6 +118,9 @@ class Product:
             batch = next(b for b in sorted(self.batches) if b.can_deallocate(line))
             batch.deallocate(line)
             self.version_number -= 1
+            self.events.append(events.Deallocated(    # инициализация события для регистрации отмены размещения заказа
+                orderid=line.orderid, sku=line.sku, qty=line.qty
+            ))
             return batch.reference
         except StopIteration:
             raise NoOrderInBatch(f'Товарная позиция {line.sku} не размещена ни в одной партии')

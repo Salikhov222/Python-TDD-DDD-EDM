@@ -16,7 +16,6 @@ def publish(event: events.Event):
     channel = CHANNEL_MAPPING.get(type(event))
     if channel:
         logging.debug('publishing: channel=%s, event=%s', channel, event)
-        print('publishing: channel=%s, event=%s', channel, event)
         r.publish(channel, json.dumps(asdict(event)))
     else:
         logging.warning('No channel defined for event %s', type(event))

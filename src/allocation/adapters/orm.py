@@ -35,6 +35,13 @@ allocations = Table(
     Column("batch_id", ForeignKey("batches.id")),
 )
 
+allocations_view = Table(
+    'allocations_view', metadata,
+    Column('orderid', String(255)),
+    Column('sku', String(255)),
+    Column('batchref', String(255))
+)
+
 def start_mappers():
     lines_mapper = mapper_reg.map_imperatively(models.OrderLine, order_lines)   # Привязка класса модели к таблице
     batches_mapper = mapper_reg.map_imperatively(

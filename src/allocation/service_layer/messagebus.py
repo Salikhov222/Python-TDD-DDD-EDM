@@ -46,7 +46,8 @@ class MessageBus(AbstractMessageBus):
     """
     EVENT_HANDLERS = {
         events.OutOfStock: [handlers.send_out_of_stock_notification],
-        events.Allocated: [handlers.publish_allocated_event]
+        events.Allocated: [handlers.publish_allocated_event, handlers.add_allocation_to_read_model],
+        events.Deallocated: [handlers.remove_allocation_from_read_model]
     }   # тип: Dict[Type[events.Event], List[Callable]]
 
     COMMAND_HANDLERS = {

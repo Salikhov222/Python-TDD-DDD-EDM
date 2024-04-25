@@ -16,3 +16,9 @@ class Allocated(Event):     # событие о размещение товар�
     sku: str
     qty: int
     batchref: str
+
+@dataclass
+class Deallocated(Event):     # событие отмены размещения товарной позиции
+    orderid: str
+    sku: str
+    qty: int
