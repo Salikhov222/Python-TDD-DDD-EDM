@@ -6,7 +6,7 @@ from sqlalchemy.sql import text
 from src.allocation.domain.models import OrderLine, Batch, Product
 from src.allocation.domain.exceptions import InvalidSku
 from src.allocation.domain import events, commands
-from src.allocation.adapters import email, redis_eventpublisher
+from src.allocation.adapters import notifications, redis_eventpublisher
 
 if TYPE_CHECKING:   # для разрешения конфликта циклического импорта
     from . import unit_of_work    
@@ -37,10 +37,12 @@ def allocate(cmd: commands.Allocate, uow: unit_of_work.AbstractUnitOfWork) -> st
         uow.commit()
         return batchref
 
-# обработчик события отсутствия товара в наличии 
-def send_out_of_stock_notification(event: events.OutOfStock, uow: unit_of_work.AbstractUnitOfWork):
-    email.send_mail(
-        'stock.@made.com',
+def send_out_of_stock_notification(event: events.OutOfStock, notifications: notifications.AbstractNotifications):
+    """
+    Обработчик события отсутствия товара в наличии
+    """
+    notifications.send(
+        'stock@made.com',
         f'Артикула {event.sku} нет в наличии'
     )
 
@@ -58,6 +60,9 @@ def deallocate(cmd: commands.Deallocate, uow: unit_of_work.AbstractUnitOfWork) -
     return batchref
 
 def change_batch_quantity(cmd: commands.ChangeBatchQuantity, uow: unit_of_work.AbstractUnitOfWork):
+    """
+    Обработчик события изменения размера партии
+    """
     with uow:
         product = uow.products.get_by_batchref(batchref=cmd.ref)
         product.change_batch_quantity(ref=cmd.ref, qty=cmd.qty)
@@ -66,11 +71,17 @@ def change_batch_quantity(cmd: commands.ChangeBatchQuantity, uow: unit_of_work.A
 def publish_allocated_event(
         event: events.Allocated, uow: unit_of_work.AbstractUnitOfWork
 ):
+    """
+    Обработчик события регистрации размещения заказа для публикации в Redis
+    """
     redis_eventpublisher.publish(event)
 
 def add_allocation_to_read_model(
         event: events.Allocated, uow: unit_of_work.SqlAlchemyUnitOfWork
 ):
+    """
+    Обработчик события регистрации события размещения заказа для обновление модели чтения данных
+    """
     with uow:
         uow.session.execute(text(
             'INSERT INTO allocations_view (orderid, sku, batchref)'
@@ -81,6 +92,9 @@ def add_allocation_to_read_model(
 def remove_allocation_from_read_model(
         event: events.Deallocated, uow: unit_of_work.SqlAlchemyUnitOfWork
 ):
+    """
+    Обработичк события отмены размещения заказа для обновления модели чтения данных
+    """
     with uow:
         uow.session.execute(text(
             'DELETE FROM allocations_view WHERE orderid = :orderid AND sku = :sku'
@@ -90,7 +104,23 @@ def remove_allocation_from_read_model(
 def reallocate(
         event: events.Deallocated, uow: unit_of_work.SqlAlchemyUnitOfWork
 ):
+    """
+    Обработчик события отмены размещения заказа для его повторного размещения
+    """
     with uow:
         product = uow.products.get(sku=event.sku)
         product.events.append(commands.Allocate(**asdict(event)))
         uow.commit()
+
+EVENT_HANDLERS = {
+    events.OutOfStock: [send_out_of_stock_notification],
+    events.Allocated: [publish_allocated_event, add_allocation_to_read_model],
+    events.Deallocated: [remove_allocation_from_read_model]
+}   # тип: Dict[Type[events.Event], List[Callable]]
+
+COMMAND_HANDLERS = {
+    commands.CreateBatch: add_batch,
+    commands.Allocate: allocate,
+    commands.Deallocate: deallocate,
+    commands.ChangeBatchQuantity: change_batch_quantity
+}   # тип: Dict[Type[commands.Command], Callable]

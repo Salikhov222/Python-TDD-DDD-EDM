@@ -22,9 +22,7 @@ def in_memory_db():
 # Привязка моделей к таблицам, создание сессии БД и очистка таблиц
 @pytest.fixture
 def sqlite_session_factory(in_memory_db):
-    start_mappers()
     yield sessionmaker(bind=in_memory_db)
-    clear_mappers()
 
 @pytest.fixture
 def sqlite_session(sqlite_session_factory):
