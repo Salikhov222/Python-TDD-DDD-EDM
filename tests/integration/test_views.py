@@ -47,5 +47,6 @@ class TestAllocationsView:
         sqlite_bus.handle(commands.Deallocate('order1', 'sku1', 20))
 
         assert views.allocations('order1', sqlite_bus.uow) == [
-            {'sku': 'sku2', 'batchref': 'sku2batch'}
+            {'sku': 'sku2', 'batchref': 'sku2batch'},
+            {'sku': 'sku1', 'batchref': 'sku1batch'}
         ]

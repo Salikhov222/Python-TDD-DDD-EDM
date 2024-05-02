@@ -1,126 +1,149 @@
 from __future__ import annotations
 from dataclasses import asdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 from sqlalchemy.sql import text
 
 from src.allocation.domain.models import OrderLine, Batch, Product
 from src.allocation.domain.exceptions import InvalidSku
 from src.allocation.domain import events, commands
-from src.allocation.adapters import notifications, redis_eventpublisher
+from src.allocation.adapters import notifications
 
 if TYPE_CHECKING:   # для разрешения конфликта циклического импорта
     from . import unit_of_work    
 
-
-def add_batch(cmd: commands.CreateBatch, uow: unit_of_work.AbstractUnitOfWork) -> None:
-    """
-    Обработчик события пополнения товарных запасов партии
-    """
-    with uow:
-        product = uow.products.get(sku=cmd.sku)
-        if product is None:
-            product = Product(cmd.sku, batches=[])
-            uow.products.add(product)
-        product.batches.append(Batch(cmd.ref, cmd.sku, cmd.qty, cmd.eta))    
-        uow.commit()
-
-def allocate(cmd: commands.Allocate, uow: unit_of_work.AbstractUnitOfWork) -> str:
+class AllocateHandler:
     """
     Обработчик размещения товарной позиции в партии
     """
-    line = OrderLine(cmd.orderid, cmd.sku, cmd.qty)
-    with uow:
-        product = uow.products.get(sku=line.sku)
-        if product is None:     # проверка на правильность введенных данных
-            raise InvalidSku(f'Недопустимый артикул {line.sku}')
-        batchref = product.allocate(line)       # вызов службы предметной области
-        uow.commit()
-        return batchref
 
-def send_out_of_stock_notification(event: events.OutOfStock, notifications: notifications.AbstractNotifications):
-    """
-    Обработчик события отсутствия товара в наличии
-    """
-    notifications.send(
-        'stock@made.com',
-        f'Артикула {event.sku} нет в наличии'
-    )
+    def __init__(self, uow: unit_of_work.AbstractUnitOfWork) -> None:
+        self.uow = uow
 
-def deallocate(cmd: commands.Deallocate, uow: unit_of_work.AbstractUnitOfWork) -> str:
+    def __call__(self, cmd: commands.Allocate) -> str:
+        line = OrderLine(cmd.orderid, cmd.sku, cmd.qty)
+        with self.uow:
+            product = self.uow.products.get(sku=line.sku)
+            if product is None:     # проверка на правильность введенных данных
+                raise InvalidSku(f'Недопустимый артикул {line.sku}')
+            batchref = product.allocate(line)       # вызов службы предметной области
+            self.uow.commit()
+            return batchref
+
+class DeallocateHandler:
     """
     Обработчик события отмены размещения товарной позиции в партии
     """    
-    line = OrderLine(cmd.orderid, cmd.sku, cmd.qty)
-    with uow:
-        product = uow.products.get(sku=line.sku)
-        if product is None:     # проверка на правильность введенных данных
-            raise InvalidSku(f'Недопустимый артикул {line.sku}')
-        batchref = product.deallocate(line)
-        uow.commit()
-    return batchref
+    
+    def __init__(self, uow: unit_of_work.AbstractUnitOfWork) -> None:
+        self.uow = uow
 
-def change_batch_quantity(cmd: commands.ChangeBatchQuantity, uow: unit_of_work.AbstractUnitOfWork):
+    def __call__(self, cmd: commands.Deallocate) -> str:
+        line = OrderLine(cmd.orderid, cmd.sku, cmd.qty)
+        with self.uow:
+            product = self.uow.products.get(sku=line.sku)
+            if product is None:     # проверка на правильность введенных данных
+                raise InvalidSku(f'Недопустимый артикул {line.sku}')
+            batchref = product.deallocate(line)
+            self.uow.commit()
+        return batchref
+
+class AddBatchHandler:
+    """
+    Обработчик события пополнения товарных запасов партии
+    """
+    
+    def __init__(self, uow: unit_of_work.AbstractUnitOfWork) -> None:
+        self.uow = uow
+
+    def __call__(self, cmd: commands.CreateBatch) -> None:
+        with self.uow:
+            product = self.uow.products.get(sku=cmd.sku)
+            if product is None:
+                product = Product(cmd.sku, batches=[])
+                self.uow.products.add(product)
+            product.batches.append(Batch(cmd.ref, cmd.sku, cmd.qty, cmd.eta))    
+            self.uow.commit()
+
+class ChangeBatchQuantityHandler:
     """
     Обработчик события изменения размера партии
     """
-    with uow:
-        product = uow.products.get_by_batchref(batchref=cmd.ref)
-        product.change_batch_quantity(ref=cmd.ref, qty=cmd.qty)
-        uow.commit()
 
-def publish_allocated_event(
-        event: events.Allocated, uow: unit_of_work.AbstractUnitOfWork
-):
+    def __init__(self, uow: unit_of_work.AbstractUnitOfWork) -> None:
+        self.uow = uow
+
+    def __call__(self, cmd: commands.ChangeBatchQuantity) -> None:
+        with self.uow:
+            product = self.uow.products.get_by_batchref(batchref=cmd.ref)
+            product.change_batch_quantity(ref=cmd.ref, qty=cmd.qty)
+            self.uow.commit()
+
+class SendOutOfStockNotificationHandler:
+    """
+    Обработчик события отсутствия товара в наличии
+    """
+
+    def __init__(self, notification: notifications.AbstractNotifications) -> None:
+        self.notification = notification
+
+    def __call__(self, event: events.OutOfStock) -> None:
+        self.notification.send(
+            'stock@made.com',
+            f'Артикула {event.sku} нет в наличии'
+        )
+    
+class PublishAllocatedEventHandler:
     """
     Обработчик события регистрации размещения заказа для публикации в Redis
     """
-    redis_eventpublisher.publish(event)
 
-def add_allocation_to_read_model(
-        event: events.Allocated, uow: unit_of_work.SqlAlchemyUnitOfWork
-):
+    def __init__(self, publish: Callable) -> None:
+        self.publish = publish
+
+    def __call__(self, event: events.Allocated) -> None:
+        self.publish(event)
+
+class AddAllocationToReadModelHandler:
     """
     Обработчик события регистрации события размещения заказа для обновление модели чтения данных
-    """
-    with uow:
-        uow.session.execute(text(
-            'INSERT INTO allocations_view (orderid, sku, batchref)'
-            ' VALUES (:orderid, :sku, :batchref)'
-        ).bindparams(orderid=event.orderid, sku=event.sku, batchref=event.batchref))
-        uow.commit()
+    """   
 
-def remove_allocation_from_read_model(
-        event: events.Deallocated, uow: unit_of_work.SqlAlchemyUnitOfWork
-):
+    def __init__(self, uow: unit_of_work.AbstractUnitOfWork) -> None:
+        self.uow = uow
+    
+    def __call__(self, event: events.Allocated) -> None:
+        with self.uow:
+            self.uow.session.execute(text(
+                'INSERT INTO allocations_view (orderid, sku, batchref)'
+                ' VALUES (:orderid, :sku, :batchref)'
+            ).bindparams(orderid=event.orderid, sku=event.sku, batchref=event.batchref))
+            self.uow.commit()
+
+class RemoveAllocationFromReadModelHandler:
     """
     Обработичк события отмены размещения заказа для обновления модели чтения данных
     """
-    with uow:
-        uow.session.execute(text(
-            'DELETE FROM allocations_view WHERE orderid = :orderid AND sku = :sku'
-        ).bindparams(orderid=event.orderid, sku=event.sku))
-        uow.commit()
 
-def reallocate(
-        event: events.Deallocated, uow: unit_of_work.SqlAlchemyUnitOfWork
-):
+    def __init__(self, uow: unit_of_work.AbstractUnitOfWork) -> None:
+        self.uow = uow
+
+    def __call__(self, event: events.Deallocated) -> None:
+        with self.uow:
+            self.uow.session.execute(text(
+                'DELETE FROM allocations_view WHERE orderid = :orderid AND sku = :sku'
+            ).bindparams(orderid=event.orderid, sku=event.sku))
+            self.uow.commit()
+
+class Reallocatehandler:
     """
     Обработчик события отмены размещения заказа для его повторного размещения
     """
-    with uow:
-        product = uow.products.get(sku=event.sku)
-        product.events.append(commands.Allocate(**asdict(event)))
-        uow.commit()
 
-EVENT_HANDLERS = {
-    events.OutOfStock: [send_out_of_stock_notification],
-    events.Allocated: [publish_allocated_event, add_allocation_to_read_model],
-    events.Deallocated: [remove_allocation_from_read_model]
-}   # тип: Dict[Type[events.Event], List[Callable]]
+    def __init__(self, uow: unit_of_work.AbstractUnitOfWork) -> None:
+        self.uow = uow
 
-COMMAND_HANDLERS = {
-    commands.CreateBatch: add_batch,
-    commands.Allocate: allocate,
-    commands.Deallocate: deallocate,
-    commands.ChangeBatchQuantity: change_batch_quantity
-}   # тип: Dict[Type[commands.Command], Callable]
+    def __call__(self, event: events.Deallocated) -> None:
+        with self.uow:
+            product = self.uow.products.get(sku=event.sku)
+            product.events.append(commands.Allocate(**asdict(event)))
+            self.uow.commit()

@@ -21,9 +21,3 @@ def get_redis_host_and_port():
     host = os.getenv("REDIS_HOST")
     port = 6379
     return dict(host=host, port=port)
-
-def get_email_host_and_port():
-    host = os.getenv("EMAIL_HOST")
-    port = 1025 
-    http_port = 8025
-    return dict(host=host, port=port, http_port=http_port)

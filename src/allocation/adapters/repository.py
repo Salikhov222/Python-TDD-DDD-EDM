@@ -1,7 +1,8 @@
-from typing import Set
 from abc import ABC, abstractmethod
+from sqlalchemy import select
 from src.allocation.domain import models
 from src.allocation.adapters import orm
+
 
 class AbstractProductRepositoriy(ABC):
     """
