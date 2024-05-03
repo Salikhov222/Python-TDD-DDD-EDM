@@ -21,7 +21,7 @@ def bootstrap(
         ],
         events.Deallocated: [
             handlers.RemoveAllocationFromReadModelHandler(uow),
-            handlers.Reallocatehandler(uow)
+            # handlers.Reallocatehandler(uow)
         ],
         events.OutOfStock: [
             handlers.SendOutOfStockNotificationHandler(notifications)
@@ -40,3 +40,5 @@ def bootstrap(
         event_handlers=injected_event_handlers,
         command_handlers=injected_command_handlers
     )
+
+bus = bootstrap()

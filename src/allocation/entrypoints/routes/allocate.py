@@ -1,18 +1,19 @@
-import uvicorn
-from fastapi import FastAPI, HTTPException, status
-from fastapi.responses import JSONResponse
+from typing import Dict
+
+from fastapi import APIRouter, HTTPException, status
+from fastapi.responses import JSONResponse, ORJSONResponse
 from fastapi.encoders import jsonable_encoder
 
-from src.allocation.domain.api_models import PostAddBatchModel, PostAllocateModel, PostDeallocateModel, GetAllocationsModel
-from src.allocation.domain import models, commands
+from src.allocation.domain.api_models import PostAllocateModel, PostDeallocateModel, GetAllocationsModel
+from src.allocation.domain import commands, models
 from src.allocation.domain.exceptions import InvalidSku
-from src.allocation import bootstrap, views
+from src.allocation.bootstrap import bus
+from src.allocation import views
 
-app = FastAPI()
-bus = bootstrap.bootstrap()
+allocate_router = APIRouter(tags=["Allocate"])
 
-@app.post("/allocate")
-async def allocate_endpoint(body: PostAllocateModel):
+@allocate_router.post("/")
+async def allocate_endpoint(body: PostAllocateModel) -> Dict:
     """
     Простая реализация конечной точки для размещения заказа в партии товара
     """
@@ -24,13 +25,13 @@ async def allocate_endpoint(body: PostAllocateModel):
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e))
     
-    return {
-        'batchref': result.pop(0)
-    }
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, 
+        content={'batchref': result.pop(0)}
+    )
 
-
-@app.post("/deallocate")
-async def deallocate_endpoint(body: PostDeallocateModel):
+@allocate_router.delete("/")
+async def deallocate_endpoint(body: PostDeallocateModel) -> Dict:
     """
     Конечная точка для отмены размещения позиции в партии
     """
@@ -43,29 +44,13 @@ async def deallocate_endpoint(body: PostDeallocateModel):
             detail=str(e)
         )
     
-    return {
-        'batchref': result.pop(0)
-    }
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, 
+        content={'batchref': result.pop(0)}
+    )
 
-
-@app.post('/batches')
-async def add_batch(body: PostAddBatchModel):
-    """
-    Конечная точка для добавления партии товара
-    """
-    try:
-        command = commands.CreateBatch(body.ref, body.sku, body.qty, body.eta)
-        result = bus.handle(command)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(e)
-        )
-    return JSONResponse(status_code=status.HTTP_200_OK, content={})
-
-
-@app.get('/allocations/{orderid}', response_model=GetAllocationsModel)
-async def allocations_view_endpoint(orderid):
+@allocate_router.get("/{orderid}", response_model=GetAllocationsModel)
+async def allocations_view_endpoint(orderid) -> Dict:
     """
     Конечная точка для просмотра размещенных заказов модели данных для чтения
     """
@@ -75,7 +60,4 @@ async def allocations_view_endpoint(orderid):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Not found"
         )
-    return JSONResponse(status_code=status.HTTP_200_OK, content=jsonable_encoder(result))
-
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
+    return JSONResponse(status_code=status.HTTP_200_OK, content=result)

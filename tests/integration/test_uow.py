@@ -9,6 +9,8 @@ from src.allocation.service_layer import unit_of_work
 from src.allocation.adapters import orm
 from tests.random_refs import random_batchref, random_orderid, random_sku
 
+pytestmark = pytest.mark.usefixtures("mappers")
+
 def insert_batch(session, ref, sku, qty, eta, product_version=1):
     session.execute(text(
         'INSERT INTO products (sku, version_number)'
@@ -47,7 +49,7 @@ def try_to_allocate(orderid, sku, exceptions):
 
 class TestUoW:
 
-    def test_uow_can_retrieve_a_batch_and_allocate_to_it(self, postgres_session_factory):
+    def test_uow_can_retrieve_a_batch_and_allocate_to_it(self, sqlite_session_factory):
         """
         Тест для проверки работы паттерна UoW:
         Создаем и добавляем партию в БД
@@ -55,11 +57,11 @@ class TestUoW:
         Размещаем заказ в партии
         Проверяем, что созданная партия и партия, в которой разместили заказ, идентичны
         """
-        session = postgres_session_factory()
+        session = sqlite_session_factory()
         insert_batch(session, 'batch1', "HIPSTER-WORKBENCH", 100, None, product_version=1)
         session.commit()
 
-        uow = unit_of_work.SqlAlchemyUnitOfWork(postgres_session_factory)
+        uow = unit_of_work.SqlAlchemyUnitOfWork(sqlite_session_factory)
         with uow:
             product = uow.products.get(sku='HIPSTER-WORKBENCH')
             line = models.OrderLine('o1', 'HIPSTER-WORKBENCH', 10)

@@ -22,8 +22,8 @@ def post_to_allocate(orderid, sku, qty, expect_success=True):
 
 def post_to_deallocate(orderid, sku, qty, expect_success=True):
     url = config.get_api_url()
-    r = requests.post(
-        f'{url}/deallocate', 
+    r = requests.delete(
+        f'{url}/allocate', 
         json={'orderid': orderid, 'sku': sku, 'qty': qty}
     )
     if expect_success:
@@ -33,7 +33,7 @@ def post_to_deallocate(orderid, sku, qty, expect_success=True):
 def get_allocation(orderid):
     url = config.get_api_url()
     r = requests.get(
-        f'{url}/allocations/{orderid}', 
+        f'{url}/allocate/{orderid}', 
         json={'orderid': orderid}
     )
 

@@ -16,4 +16,4 @@ RUN pip install -r requirements.txt
 
 # ENV PYTHONPATH=/src
 
-CMD [ "uvicorn", "src.allocation.entrypoints.fastAPI_app:app", "--reload", "--host", "0.0.0.0", "--port", "8000" ]
+CMD [ "uvicorn", "src.allocation.entrypoints.main:app", "--reload", "--host", "0.0.0.0", "--port", "8000" ]
