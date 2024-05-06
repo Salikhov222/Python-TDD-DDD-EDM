@@ -30,6 +30,7 @@ def sqlite_session(sqlite_session_factory):
 
 @pytest.fixture
 def mappers():
+    clear_mappers()
     start_mappers()
     yield
     clear_mappers()
