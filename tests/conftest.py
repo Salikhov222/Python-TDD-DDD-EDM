@@ -65,18 +65,3 @@ def postgres_session(postgres_session_factory):
 def wait_for_redis_to_come_up():
     r = redis.Redis(**config.get_redis_host_and_port())
     return r.ping()
-
-# перезапуск службы Redis PubSub
-@pytest.fixture
-def restart_redis_pubsub():
-    wait_for_redis_to_come_up()
-    if not shutil.which("docker-compose"):
-        print("skipping restart, assumes running in container")
-        return
-    try:
-        subprocess.run(
-            ['docker', 'compose', 'restart', '-t', '0', 'redis_pubsub'],
-            check=True
-        )
-    except subprocess.CalledProcessError as e:
-        raise RuntimeError(f"command {e.cmd} return with error (code {e.returncode}): {e.output}")

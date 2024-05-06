@@ -13,7 +13,6 @@ idna==3.6
 iniconfig==2.0.0
 orm==0.3.1
 packaging==23.2
-pkg_resources==0.0.0
 pluggy==1.4.0
 psycopg2-binary==2.9.9
 pydantic==2.6.2

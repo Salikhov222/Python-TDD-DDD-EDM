@@ -1,4 +1,3 @@
-import inspect
 from typing import Callable
 from src.allocation.service_layer import unit_of_work, messagebus, handlers
 from src.allocation.adapters import redis_eventpublisher, orm, notifications

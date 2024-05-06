@@ -21,8 +21,8 @@ class RedisSettings(BaseSettings):
 
     model_config = SettingsConfigDict(extra='ignore', env_file=".env")
 
-db_settings = PostgresSettings()
 api_settings = ApiSettings()
+db_settings = PostgresSettings()
 redis_settings = RedisSettings()
 
 def get_postgres_uri():

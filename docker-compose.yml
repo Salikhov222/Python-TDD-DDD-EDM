@@ -10,9 +10,11 @@ services:
     depends_on:
       - postgres
       - redis
+    env_file:
+      - ./.env
     environment:
       - DB_HOST=postgres
-      - DB_PASSWORD=abc123
+      - DB_PASSWORD=allocation
       - REDIS_HOST=redis
       - PYTHONDONTWRITEBYTECODE=1
     volumes:
@@ -27,9 +29,9 @@ services:
     depends_on:
       - redis_pubsub
     environment:
-      - DB_HOST=localhost
-      - DB_PASSWORD=abc123
-      - API_HOST=localhost
+      - DB_HOST=postgres
+      - DB_PASSWORD=allocation
+      - API_HOST=api
       - PYTHONDONTWRITEBYTECODE=1
       - REDIS_HOST=redis
     volumes:
@@ -44,7 +46,7 @@ services:
       - POSTGRES_USER=allocation
       - POSTGRES_PASSWORD=allocation
     ports:
-      - "5433:5432"
+      - "5432:5432"
 
   redis:
     image: redis:alpine
